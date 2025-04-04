@@ -87,7 +87,7 @@ try:
         )
 
         electors = st.number_input(
-            "Total Electors in Constituency",
+            "Total voters in Constituency",
             min_value=1000,
             value=1500000,
             step=1000,

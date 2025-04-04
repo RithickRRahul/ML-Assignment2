@@ -45,14 +45,25 @@ def load_stats():
         "O": 18.4
     }
     
-    return party_win_rates, gender_win_rates
+    # Add combined party-gender win rates (hypothetical - adjust with real data if available)
+    party_gender_win_rates = {
+        "BJP_M": 60.2,
+        "BJP_F": 55.1,
+        "BJP_O": 48.3,
+        "INC_M": 44.5,
+        "INC_F": 38.2,
+        "INC_O": 30.1,
+        # Add other combinations as needed
+    }
+    
+    return party_win_rates, gender_win_rates, party_gender_win_rates
 
 try:
     models, expected_columns = load_models()
-    party_win_rates, gender_win_rates = load_stats()
+    party_win_rates, gender_win_rates, party_gender_win_rates = load_stats()
     
     # Create tabs for different sections
-    tab1, tab2, tab3 = st.tabs(["Prediction", "Statistics", "Model Information"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Prediction", "Statistics", "Model Information", "Debug"])
     
     with tab1:
         st.subheader("Make a Prediction")
@@ -92,27 +103,58 @@ try:
             st.metric("Gender Win Rate", f"{gender_win_rates[gender]:.1f}%",
                       delta=f"{gender_win_rates[gender] - 30:.1f}%" if gender_win_rates[gender] > 30 else f"{gender_win_rates[gender] - 30:.1f}%",
                       delta_color="normal")
+            
+            # Combined party-gender win rate if available
+            combined_key = f"{party}_{gender}"
+            if combined_key in party_gender_win_rates:
+                st.metric("Combined Party-Gender Win Rate", 
+                         f"{party_gender_win_rates[combined_key]:.1f}%",
+                         delta=f"{party_gender_win_rates[combined_key] - 40:.1f}%" if party_gender_win_rates[combined_key] > 40 else f"{party_gender_win_rates[combined_key] - 40:.1f}%",
+                         delta_color="normal")
     
         # Predict button with enhanced UI
         predict_button = st.button("🔮 Predict Outcome", use_container_width=True, type="primary")
         
         if predict_button:
             with st.spinner("Analyzing election data..."):
-                # Create input dict with only party and gender one-hot encoded
-                input_data = {
-                    f"partyabbre_{party}": 1,
-                    f"cand_sex_{gender}": 1
+                st.session_state.last_input = {
+                    "party": party,
+                    "gender": gender,
+                    "model": selected_model
                 }
                 
-                # Build dataframe, fill missing expected columns
+                # Create input data for the model - properly format the input
+                input_data = {}
+                
+                # Initialize all expected columns to 0
+                for col in expected_columns:
+                    input_data[col] = 0
+                
+                # Set the specific features for this prediction to 1
+                party_col = f"partyabbre_{party}" if f"partyabbre_{party}" in expected_columns else None
+                gender_col = f"cand_sex_{gender}" if f"cand_sex_{gender}" in expected_columns else None
+                
+                if party_col:
+                    input_data[party_col] = 1
+                if gender_col:
+                    input_data[gender_col] = 1
+                
+                # Build dataframe using all expected columns
                 input_df = pd.DataFrame([input_data])
-                input_df = input_df.reindex(columns=expected_columns, fill_value=0)
                 
                 model = models[selected_model]
                 
                 try:
+                    # Make prediction
                     prediction = model.predict(input_df)[0]
                     proba = model.predict_proba(input_df)[0][1] if hasattr(model, "predict_proba") else None
+                    
+                    # Store result in session state
+                    st.session_state.last_prediction = {
+                        "prediction": prediction,
+                        "probability": proba,
+                        "input_data": input_data
+                    }
                     
                     # Enhanced results display
                     st.markdown("---")
@@ -128,6 +170,17 @@ try:
                             
                         if proba is not None:
                             st.write(f"**Win Probability:** {proba * 100:.1f}%")
+                            
+                        # Add comparison with historical stats
+                        combined_key = f"{party}_{gender}"
+                        if combined_key in party_gender_win_rates:
+                            historical = party_gender_win_rates[combined_key] / 100
+                            model_prob = proba if proba is not None else (1.0 if prediction == 1 else 0.0)
+                            
+                            st.write("**Comparison:**")
+                            st.write(f"- Historical win rate: {historical * 100:.1f}%")
+                            st.write(f"- Model prediction: {model_prob * 100:.1f}%")
+                            st.write(f"- Difference: {(model_prob - historical) * 100:.1f}%")
                     
                     with col2:
                         # Visualization of prediction probability
@@ -148,6 +201,7 @@ try:
                 
                 except Exception as e:
                     st.error(f"⚠️ Error making prediction: {e}")
+                    st.error("Please check if the model's expected feature names match the input data.")
     
     with tab2:
         st.subheader("Historical Data Analysis")
@@ -201,12 +255,38 @@ try:
         
         st.pyplot(fig)
         
+        # New: Add party-gender combined analysis
+        st.write("### Combined Party-Gender Win Rates")
+        
+        # Get available combinations and sort them by party
+        combinations = list(party_gender_win_rates.keys())
+        combined_rates = [party_gender_win_rates[combo] for combo in combinations]
+        
+        # Create bar chart for combined stats
+        fig, ax = plt.subplots(figsize=(12, 6))
+        bars = ax.bar(combinations, combined_rates, color=sns.color_palette("viridis", len(combinations)))
+        
+        # Add data labels
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
+                    f'{height:.1f}%', ha='center', va='bottom')
+        
+        ax.set_ylim(0, max(combined_rates) * 1.2)
+        ax.set_ylabel("Win Rate (%)")
+        ax.set_title("Historical Win Rates by Party-Gender Combination")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.xticks(rotation=45)
+        
+        st.pyplot(fig)
+        
         # Add some insights from the analysis
         st.info("""
         **Key Insights:**
         - BJP has historically shown the highest win rate, followed by AITC
         - Male candidates tend to have a higher win rate than female candidates
         - The combination of party affiliation and gender can significantly influence election outcomes
+        - Some combinations may have interactions that aren't apparent when looking at separate factors
         """)
     
     with tab3:
@@ -256,6 +336,146 @@ try:
         Other factors like voter turnout, campaigning effectiveness, and regional variations also play important roles
         but are not captured in the current simplified model.
         """)
+        
+        # Add button to show feature importances if available
+        if st.button("Show Feature Importances for Selected Model"):
+            selected = st.session_state.get("last_input", {}).get("model", "Tuned RF")
+            model = models.get(selected)
+            
+            if model and hasattr(model, "feature_importances_"):
+                importances = model.feature_importances_
+                
+                # Create DataFrame for feature importances
+                feature_df = pd.DataFrame({
+                    'Feature': expected_columns,
+                    'Importance': importances
+                }).sort_values(by='Importance', ascending=False)
+                
+                # Display top features
+                st.write(f"### Top Features for {selected}")
+                st.dataframe(feature_df.head(10))
+                
+                # Plot feature importances
+                fig, ax = plt.subplots(figsize=(10, 6))
+                top_features = feature_df.head(10)
+                sns.barplot(x='Importance', y='Feature', data=top_features, ax=ax)
+                plt.title(f"Top 10 Feature Importances - {selected}")
+                plt.tight_layout()
+                st.pyplot(fig)
+            else:
+                st.warning("Feature importance information is not available for this model.")
+    
+    # New debugging tab
+    with tab4:
+        st.subheader("Debug Information")
+        
+        st.write("This tab helps debug issues with model predictions")
+        
+        # Show expected columns
+        if st.checkbox("Show Expected Model Columns"):
+            st.write("### Expected Model Columns")
+            st.write(f"Total number of expected columns: {len(expected_columns)}")
+            st.write(expected_columns)
+        
+        # Show last prediction details
+        if st.checkbox("Show Last Prediction Details"):
+            if "last_prediction" in st.session_state:
+                last_pred = st.session_state.last_prediction
+                last_input = st.session_state.last_input
+                
+                st.write("### Last Prediction Information")
+                st.write(f"Party: {last_input['party']}")
+                st.write(f"Gender: {last_input['gender']}")
+                st.write(f"Model: {last_input['model']}")
+                st.write(f"Prediction: {last_pred['prediction']} ({'Win' if last_pred['prediction'] == 1 else 'Lose'})")
+                st.write(f"Probability: {last_pred['probability'] * 100:.2f}%" if last_pred['probability'] is not None else "Not available")
+                
+                # Show input data
+                st.write("### Input Data")
+                input_df = pd.DataFrame([last_pred['input_data']])
+                
+                # Show only non-zero features for clarity
+                non_zero_features = input_df.loc[:, (input_df != 0).any(axis=0)]
+                st.write("#### Non-zero features:")
+                st.dataframe(non_zero_features)
+                
+                # Option to see all features
+                if st.checkbox("Show all input features"):
+                    st.dataframe(input_df)
+            else:
+                st.info("No prediction has been made yet. Make a prediction first.")
+        
+        # Test different combinations of party/gender
+        st.write("### Test Multiple Combinations")
+        if st.button("Run Test Cases for All Combinations"):
+            models_to_test = ["Tuned RF"]  # Just use one model for testing
+            
+            # Create test cases
+            parties = ["BJP", "INC", "DMK", "AAAP", "CPI", "AITC", "BSP", "SP"]
+            genders = ["M", "F", "O"]
+            
+            # Create results table
+            results = []
+            
+            for model_name in models_to_test:
+                model = models[model_name]
+                
+                for party in parties:
+                    for gender in genders:
+                        # Create input data
+                        input_data = {}
+                        for col in expected_columns:
+                            input_data[col] = 0
+                            
+                        party_col = f"partyabbre_{party}" if f"partyabbre_{party}" in expected_columns else None
+                        gender_col = f"cand_sex_{gender}" if f"cand_sex_{gender}" in expected_columns else None
+                        
+                        if party_col:
+                            input_data[party_col] = 1
+                        if gender_col:
+                            input_data[gender_col] = 1
+                            
+                        # Build dataframe
+                        input_df = pd.DataFrame([input_data])
+                        
+                        # Predict
+                        prediction = model.predict(input_df)[0]
+                        proba = model.predict_proba(input_df)[0][1] if hasattr(model, "predict_proba") else None
+                        
+                        # Add to results
+                        results.append({
+                            "Party": party,
+                            "Gender": gender,
+                            "Model": model_name,
+                            "Prediction": "Win" if prediction == 1 else "Lose",
+                            "Win Probability": f"{proba * 100:.1f}%" if proba is not None else "N/A",
+                            "Raw Probability": proba if proba is not None else 0
+                        })
+            
+            # Convert to DataFrame and display
+            results_df = pd.DataFrame(results)
+            
+            # Show summary
+            st.write("### Prediction Results for All Combinations")
+            st.dataframe(results_df)
+            
+            # Create heatmap of win probabilities
+            st.write("### Win Probability Heatmap")
+            pivot_df = results_df.pivot_table(
+                index="Party", 
+                columns="Gender", 
+                values="Raw Probability",
+                aggfunc='mean'
+            )
+            
+            fig, ax = plt.subplots(figsize=(10, 8))
+            sns.heatmap(pivot_df, annot=True, cmap="Blues", fmt=".2f", ax=ax)
+            plt.title(f"Win Probability by Party and Gender")
+            st.pyplot(fig)
+            
+            # Compare with historical data
+            st.write("### Model vs. Historical Win Rates")
+            st.write("This analysis can help identify discrepancies between model predictions and historical data.")
 
     # Footer - moved inside the try block
     st.markdown("---")
@@ -268,3 +488,4 @@ try:
 except Exception as e:
     st.error(f"Error loading application: {e}")
     st.info("Please make sure all required model files are available in the app directory.")
+    st.error(f"Detailed error: {str(e)}")

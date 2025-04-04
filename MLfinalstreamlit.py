@@ -112,7 +112,7 @@ try:
             default_index = 0 # Default to first model if GB not found
 
         selected_model = st.selectbox(
-            "Choose Model",
+            "Choose Model (Choose Gradient Boosting for best results)",
             tuple(model_keys),
             index=default_index,
         )

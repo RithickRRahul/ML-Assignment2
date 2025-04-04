@@ -14,24 +14,14 @@ st.markdown("### Predict election outcomes based on candidate and constituency d
 # --- Load models and stats (no changes needed here) ---
 @st.cache_resource
 def load_models():
-    # Make sure the paths to your saved model files are correct
-    try:
-        models = {
-            "Tuned RF": joblib.load("tuned_rf.pkl"),
-            "Baseline RF": joblib.load("baseline_rf.pkl"),
-            "AdaBoost": joblib.load("adaboost_model.pkl"),
-            "Bagging": joblib.load("bagging_model.pkl"),
-            "Gradient Boosting": joblib.load("gradient_boosting.pkl")
-        }
-        expected_columns = joblib.load("expected_columns.pkl")
-    except FileNotFoundError as e:
-        st.error(f"Error loading model or column file: {e}")
-        st.error("Ensure all .pkl files are in the correct directory.")
-        st.stop()
-    except Exception as e:
-        st.error(f"An unexpected error occurred loading models: {e}")
-        st.stop()
-
+    models = {
+        "Tuned RF": joblib.load("tuned_rf.pkl"),
+        "Baseline RF": joblib.load("baseline_rf.pkl"),
+        "AdaBoost": joblib.load("adaboost_model.pkl"),
+        "Bagging": joblib.load("bagging_model.pkl"),
+        "Gradient Boosting": joblib.load("gradient_boosting.pkl")
+    }
+    expected_columns = joblib.load("expected_columns.pkl")
     # Check for required numerical columns in expected_columns
     required_numeric = ['year', 'totvotpoll', 'electors', 'vote_share']
     if not all(col in expected_columns for col in required_numeric):
@@ -87,7 +77,7 @@ try:
                 "Election Year",
                 min_value=1977,
                 max_value=2024, # Adjust max year if needed
-                value=2014, # Default based on user's context
+                value=2019, # Default to a recent election year from your data
                 step=1,
                 help="Enter the year of the election"
             )
@@ -103,11 +93,11 @@ try:
             totvotpoll = st.number_input(
                 "Total Votes Polled for Candidate",
                 min_value=0,
-                value=560000, # Example default, adjust based on user's test
+                value=500000, # Example default, adjust based on typical winning votes
                 step=1000,
                 help="Estimated total votes received by this candidate"
             )
-            # Calculate vote_share dynamically
+            # NEW: Calculate vote_share dynamically
             # Avoid division by zero if electors is 0 or not set yet
             vote_share = (totvotpoll / electors * 100) if electors > 0 else 0.0
             # Display calculated vote share (optional, for user feedback)
@@ -115,74 +105,59 @@ try:
 
 
             st.markdown("#### Model Selection")
-            # --- INTEGRATED CODE: Start ---
-            # Find the index of 'Gradient Boosting' in the keys list
-            model_keys = list(models.keys())
-            try:
-                default_index = model_keys.index("Gradient Boosting")
-            except ValueError:
-                default_index = 0 # Default to first model if GB not found
-
             selected_model = st.selectbox(
                 "Choose Model",
-                tuple(model_keys),
-                index=default_index, # Set default index
-                help="Select the machine learning model to use for prediction. Gradient Boosting recommended." # Added recommendation
+                tuple(models.keys()),
+                 # MODIFIED: Default to AdaBoost as it handled sparse input better initially
+                index=list(models.keys()).index("AdaBoost") if "AdaBoost" in models else 0,
+                help="Select the machine learning model to use for prediction"
             )
-            # --- INTEGRATED CODE: End ---
 
         with col2:
             st.markdown("### Historical Win Rates (Based on Party/Gender)")
             # Party win rate
-            party_rate = party_win_rates.get(party, None) # Use get for safety
-            if party_rate is not None:
-                 st.metric("Party Win Rate", f"{party_rate:.1f}%",
-                           delta=f"{party_rate - 33:.1f}%", delta_color="normal")
+            if party in party_win_rates:
+                 st.metric("Party Win Rate", f"{party_win_rates[party]:.1f}%",
+                           delta=f"{party_win_rates[party] - 33:.1f}%", delta_color="normal")
             # Gender win rate
-            gender_rate = gender_win_rates.get(gender, None)
-            if gender_rate is not None:
-                st.metric("Gender Win Rate", f"{gender_rate:.1f}%",
-                          delta=f"{gender_rate - 30:.1f}%", delta_color="normal")
+            if gender in gender_win_rates:
+                st.metric("Gender Win Rate", f"{gender_win_rates[gender]:.1f}%",
+                          delta=f"{gender_win_rates[gender] - 30:.1f}%", delta_color="normal")
             # Combined party-gender win rate
             combined_key = f"{party}_{gender}"
-            combined_rate = party_gender_win_rates.get(combined_key, None)
-            if combined_rate is not None:
+            if combined_key in party_gender_win_rates:
                 st.metric("Combined Party-Gender Win Rate",
-                         f"{combined_rate:.1f}%",
-                         delta=f"{combined_rate - 40:.1f}%", delta_color="normal")
+                         f"{party_gender_win_rates[combined_key]:.1f}%",
+                         delta=f"{party_gender_win_rates[combined_key] - 40:.1f}%", delta_color="normal")
 
-            # Add a note about the importance of other factors
+            # NEW: Add a note about the importance of other factors
             st.info("ℹ️ Note: Historical rates are based only on Party/Gender. The model prediction considers other factors you provide.")
 
 
         predict_button = st.button("🔮 Predict Outcome", use_container_width=True, type="primary")
 
         if predict_button:
-            # --- INTEGRATED CODE: Start ---
-            # Add warning for Tuned RF if selected
-            if selected_model == "Tuned RF":
-                st.warning("⚠️ The Tuned RF model may produce 0% win probability for some inputs due to its specific training. Consider using other models like Gradient Boosting for potentially more robust predictions.")
-            # --- INTEGRATED CODE: End ---
-
             with st.spinner("Analyzing election data..."):
                 st.session_state.last_input = {
                     "party": party,
                     "gender": gender,
                     "model": selected_model,
+                    # NEW: Store numerical inputs too
                     "year": year,
                     "electors": electors,
                     "totvotpoll": totvotpoll,
                     "vote_share": vote_share
                 }
 
-                # Create input data for the model
+                # Create input data for the model - properly format the input
                 input_data = {}
 
                 # Initialize all expected columns to 0
                 for col in expected_columns:
                     input_data[col] = 0
 
-                # Set numerical features based on user input
+                # MODIFIED: Set numerical features based on user input
+                # Ensure these column names exactly match those in expected_columns
                 input_data['year'] = year
                 input_data['electors'] = electors
                 input_data['totvotpoll'] = totvotpoll
@@ -192,22 +167,17 @@ try:
                 party_col_name = f"partyabbre_{party}"
                 gender_col_name = f"cand_sex_{gender}"
 
-                # Check and set categorical columns
-                found_party = False
+                # Check if the generated column names exist in the expected columns
                 if party_col_name in expected_columns:
                     input_data[party_col_name] = 1
-                    found_party = True
                 else:
                     st.warning(f"Party column '{party_col_name}' not found in model features. Prediction might be inaccurate.")
 
-                found_gender = False
                 if gender_col_name in expected_columns:
                      input_data[gender_col_name] = 1
-                     found_gender = True
                 else:
-                    # Handle cases where 'O' might not have been encoded or was dropped
-                    if gender != 'O': # Only warn if M or F column is missing
-                         st.warning(f"Gender column '{gender_col_name}' not found in model features. Prediction might be inaccurate.")
+                    st.warning(f"Gender column '{gender_col_name}' not found in model features. Prediction might be inaccurate.")
+
 
                 # Build dataframe using all expected columns IN THE CORRECT ORDER
                 try:
@@ -219,7 +189,7 @@ try:
                          'electors': 'int64',
                          'vote_share': 'float64'
                          # Add other numeric columns if needed, matching notebook dtypes
-                     }, errors='ignore')
+                     }, errors='ignore') # Use errors='ignore' if some columns might be missing
                 except Exception as e:
                      st.error(f"Error creating input DataFrame: {e}")
                      st.error(f"Input data keys: {list(input_data.keys())}")
@@ -258,9 +228,8 @@ try:
 
                         # Add comparison with historical stats
                         combined_key = f"{party}_{gender}"
-                        hist_rate = party_gender_win_rates.get(combined_key, None)
-                        if hist_rate is not None:
-                            historical = hist_rate / 100.0
+                        if combined_key in party_gender_win_rates:
+                            historical = party_gender_win_rates[combined_key] / 100.0
                             model_prob = proba if proba is not None else (1.0 if prediction == 1 else 0.0)
 
                             st.write("**Comparison (Party/Gender Only):**")
@@ -308,10 +277,12 @@ try:
                     st.dataframe(input_df.head()) # Show the dataframe being used
 
 
-    # --- Tabs 2, 3, 4 remain largely the same ---
+    # --- Tabs 2, 3, 4 remain largely the same, but Debug Tab needs update ---
 
     with tab2:
         st.subheader("Historical Data Analysis")
+        # ... (rest of tab2 code remains the same) ...
+        # Show some insights from the analysis
         st.write("### Party Win Rates")
 
         # Create bar chart of party win rates
@@ -450,7 +421,7 @@ try:
         # Add button to show feature importances if available
         if st.button("Show Feature Importances for Selected Model"):
             # MODIFIED: Use the current selected model, default to AdaBoost if none yet
-            selected = st.session_state.get("last_input", {}).get("model", "Gradient Boosting") # Changed default for button
+            selected = st.session_state.get("last_input", {}).get("model", "AdaBoost")
             model = models.get(selected)
 
             if model and hasattr(model, "feature_importances_"):
@@ -535,7 +506,7 @@ try:
         if st.button("Run Test Cases (Categorical Only)"):
             # ... (rest of test case code remains the same, but acknowledge limitations) ...
 
-            models_to_test = ["Gradient Boosting"]  # Test with the recommended model
+            models_to_test = ["Tuned RF"]  # Just use one model for testing
 
             # Create test cases
             parties = ["BJP", "INC", "DMK", "AAAP", "CPI", "AITC", "BSP", "SP"]
@@ -547,13 +518,13 @@ try:
             for model_name in models_to_test:
                 model = models[model_name]
 
-                for party_test in parties:
-                    for gender_test in genders:
+                for party in parties:
+                    for gender in genders:
                         # Create input data - ALL ZERO except party/gender
                         input_data_test = {col: 0 for col in expected_columns}
 
-                        party_col_name_test = f"partyabbre_{party_test}"
-                        gender_col_name_test = f"cand_sex_{gender_test}"
+                        party_col_name_test = f"partyabbre_{party}"
+                        gender_col_name_test = f"cand_sex_{gender}"
 
                         if party_col_name_test in expected_columns:
                             input_data_test[party_col_name_test] = 1
@@ -573,15 +544,15 @@ try:
                             prediction_test = model.predict(input_df_test)[0]
                             proba_test = model.predict_proba(input_df_test)[0][1] if hasattr(model, "predict_proba") else None
                         except Exception as e_test:
-                             st.error(f"Error testing {party_test}/{gender_test} with {model_name}: {e_test}")
+                             st.error(f"Error testing {party}/{gender} with {model_name}: {e_test}")
                              prediction_test = "Error"
                              proba_test = None
 
 
                         # Add to results
                         results.append({
-                            "Party": party_test,
-                            "Gender": gender_test,
+                            "Party": party,
+                            "Gender": gender,
                             "Model": model_name,
                             "Prediction": "Win" if prediction_test == 1 else ("Lose" if prediction_test == 0 else "Error"),
                             "Win Probability": f"{proba_test * 100:.1f}%" if proba_test is not None else "N/A",
@@ -625,14 +596,15 @@ try:
     with col1_foot:
         st.caption("Data source: Indian Election Dataset (Processed)")
     with col2_foot:
-        st.caption("App Version 1.2") # Increment version
+        st.caption("App Version 1.1") # Example version
 
 except FileNotFoundError as e:
      st.error(f"Error loading model or column file: {e}")
-     st.error("Please ensure all .pkl files are in the same directory as the Streamlit app.")
+     st.error("Please ensure 'tuned_rf.pkl', 'baseline_rf.pkl', 'adaboost_model.pkl', 'bagging_model.pkl', 'gradient_boosting.pkl', and 'expected_columns.pkl' are in the same directory as the Streamlit app.")
      st.info("If files are present, check file permissions.")
 except Exception as e:
-    st.error(f"An unexpected error occurred: {e}")
+    st.error(f"An unexpected error occurred during application load or execution: {e}")
     st.error(f"Detailed error: {str(e)}")
-    import traceback
-    st.text(traceback.format_exc())
+    # Optionally add traceback for deeper debugging if needed
+    # import traceback
+    # st.text(traceback.format_exc())

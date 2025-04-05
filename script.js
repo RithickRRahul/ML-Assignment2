@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Make API Call ---
-        const apiUrl = 'http://127.0.0.1:5000/predict'; // UPDATE THIS URL
+        const apiUrl = 'https://election-predictor-api.onrender.com/predict'; // UPDATE THIS URL
 
         try {
             const response = await fetch(apiUrl, {

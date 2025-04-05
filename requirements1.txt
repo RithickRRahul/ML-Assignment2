@@ -1,8 +1,0 @@
-flask
-pandas
-joblib
-numpy
-scikit-learn
-xgboost
-uvicorn
-# Add any other libraries your api.py or models depend on

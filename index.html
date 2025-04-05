@@ -4,7 +4,175 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Election Winner Predictor</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Basic Reset & Body Styling - Simplified */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif; /* Simpler font */
+            line-height: 1.5;
+            padding: 15px;
+            max-width: 650px;
+            margin: 10px auto; /* Basic centering */
+            background-color: #fff; /* Plain white background */
+            color: #000; /* Plain black text */
+        }
+
+        /* Header - Simplified */
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 15px;
+        }
+
+        header h1 {
+            margin-bottom: 3px;
+            font-size: 1.8em; /* Slightly adjust heading size for narrower width */
+        }
+
+        header h3 {
+            font-weight: normal;
+            font-size: 1em;
+        }
+
+        /* Main Content Sections - Simplified */
+        main section {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd; /* Simple border instead of shadow */
+        }
+
+        h2, h3, h4 {
+            margin-bottom: 10px;
+        }
+
+        h4 {
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #ddd; /* Thinner separator */
+            margin: 20px 0;
+        }
+
+        #prediction-form {
+            display: block; /* Changed back to block for simpler stacking */
+        }
+
+        .input-columns {
+            display: block; /* Stack input groups */
+            margin-bottom: 0; /* Remove gap logic */
+            width: 100%;
+        }
+
+        .input-column {
+            margin-bottom: 15px; /* Space between stacked groups */
+        }
+
+        label {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: bold;
+        }
+
+        select,
+        input[type="number"] {
+            width: 100%; /* Still full width */
+            padding: 8px; /* Slightly less padding */
+            margin-bottom: 10px;
+            border: 1px solid #aaa; /* Basic border */
+            border-radius: 0; /* No rounded corners */
+            font-size: 0.95rem;
+        }
+
+        .model-used-info {
+            /* MODIFIED: Center text */
+            text-align: center;
+            margin-bottom: 10px;
+            font-style: italic;
+            color: #555;
+            width: 100%;
+        }
+
+
+        button[type="submit"] {
+            background-color: #24a0ed;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: normal;
+            width: 100%; /* Full width button */
+            margin: 10px auto 0 auto; /* Center button */
+            display: block; /* Ensure it takes full width */
+            transition: background-color 0.3s ease;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #00b3ff;
+        }
+
+        .vote-share-display {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-style: normal;
+            font-size: 0.9em;
+        }
+
+        .results-section {
+        margin-top: 20px; /* Add space above results */
+        }
+
+        .prediction-text {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 0;
+            border: 1px solid #ddd;
+        }
+
+        .prediction-text.success {
+            color: green;
+            background-color: #f0fff0;
+        }
+
+        .prediction-text.error {
+            color: red;
+            background-color: #fff0f0;
+        }
+
+        #win-probability-output {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #comparison-output p {
+            margin-bottom: 2px;
+            font-size: 0.9em;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #888;
+            font-size: 0.8em;
+        }
+
+        .footer-columns p {
+            margin-bottom: 3px;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -78,6 +246,135 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Get DOM Elements ---
+            const form = document.getElementById('prediction-form');
+            const partySelect = document.getElementById('party');
+            const genderSelect = document.getElementById('gender');
+            const yearInput = document.getElementById('year');
+            const electorsInput = document.getElementById('electors');
+            const totvotpollInput = document.getElementById('totvotpoll');
+            const voteShareDisplay = document.getElementById('vote-share-output');
+            const predictButton = document.getElementById('predict-button');
+            const loadingSpinner = document.getElementById('loading-spinner');
+
+            const resultsSection = document.getElementById('results-section');
+            const predictionOutput = document.getElementById('prediction-output');
+            const winProbOutput = document.getElementById('win-probability-output');
+            const comparisonOutput = document.getElementById('comparison-output');
+
+            // --- Historical Data (Only needed for comparison now) ---
+            const partyGenderWinRates = {
+                "BJP_M": 60.2, "BJP_F": 55.1, "BJP_O": 48.3,
+                "INC_M": 44.5, "INC_F": 38.2, "INC_O": 30.1,
+            };
+
+            // --- FIXED MODEL ---
+            const fixedModelName = "Gradient Boosting"; // Use GB by default
+
+            // --- Calculate and Display Vote Share ---
+            function calculateAndDisplayVoteShare() {
+                const electors = parseFloat(electorsInput.value) || 0;
+                const totvotpoll = parseFloat(totvotpollInput.value) || 0;
+                let share = 0;
+                if (electors > 0) {
+                    share = (totvotpoll / electors * 100);
+                }
+                voteShareDisplay.textContent = `${share.toFixed(2)}%`;
+            }
+
+            // Initial calculation and listeners for updates
+            calculateAndDisplayVoteShare();
+            electorsInput.addEventListener('input', calculateAndDisplayVoteShare);
+            totvotpollInput.addEventListener('input', calculateAndDisplayVoteShare);
+
+            // --- Form Submission Handler ---
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                loadingSpinner.style.display = 'block';
+                resultsSection.style.display = 'none';
+                predictionOutput.textContent = '';
+                winProbOutput.textContent = '';
+                comparisonOutput.innerHTML = '';
+                predictionOutput.className = 'prediction-text';
+
+                const electorsVal = parseFloat(electorsInput.value);
+                const totvotpollVal = parseFloat(totvotpollInput.value);
+
+                const payload = {
+                    party: partySelect.value,
+                    gender: genderSelect.value,
+                    year: parseInt(yearInput.value),
+                    electors: electorsVal,
+                    totvotpoll: totvotpollVal,
+                    selected_model: fixedModelName // Send fixed model name
+                };
+
+                // --- Make API Call ---
+                const apiUrl = 'http://127.0.0.1:8080/predict'; // UPDATE THIS URL
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    loadingSpinner.style.display = 'none';
+                    resultsSection.style.display = 'block';
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+                        throw new Error(`API Error (${response.status}): ${errorData.error || response.statusText}`);
+                    }
+
+                    const result = await response.json();
+
+                    // --- Display Results ---
+                    if (result.prediction === 1) {
+                        predictionOutput.textContent = '✅ PREDICTION: LIKELY TO WIN';
+                        predictionOutput.classList.add('success');
+                    } else {
+                        predictionOutput.textContent = '❌ PREDICTION: LIKELY TO LOSE';
+                        predictionOutput.classList.add('error');
+                    }
+
+                    if (result.win_probability !== null && result.win_probability !== undefined) {
+                        winProbOutput.textContent = `Win Probability: ${(result.win_probability * 100).toFixed(1)}%`;
+                    } else {
+                        winProbOutput.textContent = 'Win Probability: N/A';
+                    }
+
+                    // Comparison Stats (using pre-defined JS object)
+                    const combinedKey = `${payload.party}_${payload.gender}`;
+                    const histRateData = partyGenderWinRates[combinedKey];
+
+                    if (histRateData !== null && histRateData !== undefined) {
+                        const historical = histRateData / 100.0;
+                        const model_prob = result.win_probability !== null ? result.win_probability : (result.prediction === 1 ? 1.0 : 0.0);
+                        const difference = (model_prob - historical) * 100;
+
+                        comparisonOutput.innerHTML = `
+                            <p><strong>Comparison (Party/Gender Only):</strong></p>
+                            <p>- Historical win rate: ${histRateData.toFixed(1)}%</p>
+                            <p>- Model prediction probability: ${(model_prob * 100).toFixed(1)}%</p>
+                            <p>- Difference: ${difference.toFixed(1)}%</p>
+                        `;
+                    } else {
+                        comparisonOutput.innerHTML = '<p><em>(No specific historical win rate for this Party/Gender combination)</em></p>';
+                    }
+
+
+                } catch (error) {
+                    loadingSpinner.style.display = 'none';
+                    resultsSection.style.display = 'block';
+                    predictionOutput.textContent = `⚠️ Error: ${error.message}`;
+                    predictionOutput.classList.add('error');
+                    console.error('Prediction API call failed:', error);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

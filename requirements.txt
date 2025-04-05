@@ -5,4 +5,5 @@ joblib
 numpy
 scikit-learn
 xgboost
-gunicorn 
+waitress
+gunicorn

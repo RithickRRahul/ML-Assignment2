@@ -16,6 +16,7 @@
             font-family: Arial, sans-serif; /* Simpler font */
             line-height: 1.5;
             padding: 15px;
+            /* MODIFIED: Reduced max-width for narrower content */
             max-width: 650px;
             margin: 10px auto; /* Basic centering */
             background-color: #fff; /* Plain white background */
@@ -129,7 +130,7 @@
         }
 
         .results-section {
-        margin-top: 20px; /* Add space above results */
+           margin-top: 20px; /* Add space above results */
         }
 
         .prediction-text {
@@ -160,6 +161,23 @@
         #comparison-output p {
             margin-bottom: 2px;
             font-size: 0.9em;
+        }
+
+        /* Spinner - Basic */
+        .spinner {
+            border: 3px solid #eee; /* Lighter border */
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border-left-color: #24a0ed; /* Match button color */
+            animation: spin 1s linear infinite; /* Linear animation */
+            margin: 8px auto 0 auto;
+            display: none; /* Hidden by default */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         footer {
@@ -224,7 +242,7 @@
                  <p class="model-used-info">Model used: Gradient Boosting</p>
 
                 <button type="submit" id="predict-button">🔮 Predict Outcome</button>
-                <div id="loading-spinner" class="spinner" style="display: none;"></div>
+                <div id="loading-spinner" class="spinner"></div> <!-- Spinner was missing before -->
             </form>
         </section>
 
@@ -242,7 +260,7 @@
         <hr>
         <div class="footer-columns">
             <p>Data source: Indian Election Dataset (Processed)</p>
-            <p>App Version 3.0 - Fixed Model</p>
+            <p>App Version 3.1 - Single File</p>
         </div>
     </footer>
 
@@ -291,13 +309,13 @@
 
             // --- Form Submission Handler ---
             form.addEventListener('submit', async (event) => {
-                event.preventDefault();
-                loadingSpinner.style.display = 'block';
-                resultsSection.style.display = 'none';
+                event.preventDefault(); // Prevent default browser form submission
+                loadingSpinner.style.display = 'block'; // Show spinner
+                resultsSection.style.display = 'none'; // Hide previous results
                 predictionOutput.textContent = '';
                 winProbOutput.textContent = '';
                 comparisonOutput.innerHTML = '';
-                predictionOutput.className = 'prediction-text';
+                predictionOutput.className = 'prediction-text'; // Reset result styling
 
                 const electorsVal = parseFloat(electorsInput.value);
                 const totvotpollVal = parseFloat(totvotpollInput.value);
@@ -312,7 +330,8 @@
                 };
 
                 // --- Make API Call ---
-                const apiUrl = 'https://test4-386510874784.asia-southeast1.run.app/predict'; // UPDATE THIS URL
+                // MODIFIED: Changed to relative path assuming API and HTML are served from same origin
+                const apiUrl = '/predict';
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -321,8 +340,8 @@
                         body: JSON.stringify(payload),
                     });
 
-                    loadingSpinner.style.display = 'none';
-                    resultsSection.style.display = 'block';
+                    loadingSpinner.style.display = 'none'; // Hide spinner
+                    resultsSection.style.display = 'block'; // Show results section
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
@@ -367,7 +386,7 @@
 
 
                 } catch (error) {
-                    loadingSpinner.style.display = 'none';
+                    loadingSpinner.style.display = 'none'; // Hide spinner on error too
                     resultsSection.style.display = 'block';
                     predictionOutput.textContent = `⚠️ Error: ${error.message}`;
                     predictionOutput.classList.add('error');

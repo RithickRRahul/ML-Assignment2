@@ -1,0 +1,167 @@
+/* Basic Reset & Body Styling - Simplified */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif; /* Simpler font */
+    line-height: 1.5;
+    padding: 15px;
+    max-width: 650px;
+    margin: 10px auto; /* Basic centering */
+    background-color: #fff; /* Plain white background */
+    color: #000; /* Plain black text */
+}
+
+/* Header - Simplified */
+header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 15px;
+}
+
+header h1 {
+    margin-bottom: 3px;
+    font-size: 1.8em; /* Slightly adjust heading size for narrower width */
+}
+
+header h3 {
+    font-weight: normal;
+    font-size: 1em;
+}
+
+/* Main Content Sections - Simplified */
+main section {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd; /* Simple border instead of shadow */
+}
+
+h2, h3, h4 {
+    margin-bottom: 10px;
+}
+
+h4 {
+    margin-top: 10px;
+    font-size: 1.1em;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #ddd; /* Thinner separator */
+    margin: 20px 0;
+}
+
+#prediction-form {
+     display: block; /* Changed back to block for simpler stacking */
+}
+
+.input-columns {
+    display: block; /* Stack input groups */
+    margin-bottom: 0; /* Remove gap logic */
+    width: 100%;
+}
+
+.input-column {
+    margin-bottom: 15px; /* Space between stacked groups */
+}
+
+label {
+    display: block;
+    margin-bottom: 3px;
+    font-weight: bold;
+}
+
+select,
+input[type="number"] {
+    width: 100%; /* Still full width */
+    padding: 8px; /* Slightly less padding */
+    margin-bottom: 10px;
+    border: 1px solid #aaa; /* Basic border */
+    border-radius: 0; /* No rounded corners */
+    font-size: 0.95rem;
+}
+
+.model-used-info {
+    /* MODIFIED: Center text */
+    text-align: center;
+    margin-bottom: 10px;
+    font-style: italic;
+    color: #555;
+    width: 100%;
+}
+
+
+button[type="submit"] {
+    background-color: #24a0ed;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: normal;
+    width: 100%; /* Full width button */
+    margin: 10px auto 0 auto; /* Center button */
+    display: block; /* Ensure it takes full width */
+    transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+    background-color: #00b3ff;
+}
+
+.vote-share-display {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-style: normal;
+    font-size: 0.9em;
+}
+
+.results-section {
+   margin-top: 20px; /* Add space above results */
+}
+
+.prediction-text {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    padding: 5px;
+    border-radius: 0;
+    border: 1px solid #ddd;
+}
+
+.prediction-text.success {
+    color: green;
+    background-color: #f0fff0;
+}
+
+.prediction-text.error {
+    color: red;
+    background-color: #fff0f0;
+}
+
+#win-probability-output {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#comparison-output p {
+    margin-bottom: 2px;
+    font-size: 0.9em;
+}
+
+footer {
+    text-align: center;
+    margin-top: 20px;
+    color: #888;
+    font-size: 0.8em;
+}
+
+.footer-columns p {
+    margin-bottom: 3px;
+}

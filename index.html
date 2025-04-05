@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Winner Predictor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>🗳️ Indian Political Candidate Win Predictor</h1>
+        <h3>Predict election outcomes based on candidate and constituency details</h3>
+    </header>
+
+    <main>
+        <section class="prediction-section">
+            <h2>Make a Prediction</h2>
+            <form id="prediction-form">
+                <div class="input-columns">
+                    <div class="input-column">
+                        <h4>Candidate Details</h4>
+                        <label for="party">Party Abbreviation:</label>
+                        <select id="party" name="party">
+                            <option value="BJP">BJP</option>
+                            <option value="INC">INC</option>
+                            <option value="DMK">DMK</option>
+                            <option value="AAAP">AAAP</option>
+                            <option value="CPI">CPI</option>
+                            <option value="AITC">AITC</option>
+                            <option value="BSP">BSP</option>
+                            <option value="SP">SP</option>
+                        </select>
+
+                        <label for="gender">Candidate Gender:</label>
+                        <select id="gender" name="gender">
+                            <option value="M">M (Male)</option>
+                            <option value="F">F (Female)</option>
+                            <option value="O">O (Other)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-column">
+                        <h4>Constituency & Election Details</h4>
+                        <label for="year">Election Year:</label>
+                        <input type="number" id="year" name="year" min="1977" max="2024" value="2014" step="1" required>
+
+                        <label for="electors">Total Electors in Constituency:</label>
+                        <input type="number" id="electors" name="electors" min="1000" value="1500000" step="1000" required>
+
+                        <label for="totvotpoll">Total Votes Polled for Candidate:</label>
+                        <input type="number" id="totvotpoll" name="totvotpoll" min="0" value="560000" step="1000" required>
+
+                        <p class="vote-share-display">Calculated Vote Share: <span id="vote-share-output">--.--%</span></p>
+                    </div>
+                </div>
+                 <p class="model-used-info">Model used: Gradient Boosting</p>
+
+                <button type="submit" id="predict-button">🔮 Predict Outcome</button>
+                <div id="loading-spinner" class="spinner" style="display: none;"></div>
+            </form>
+        </section>
+
+        <section id="results-section" class="results-section" style="display: none;">
+             <hr>
+             <h2>Prediction Results</h2>
+             <div id="prediction-output" class="prediction-text"></div>
+             <p id="win-probability-output"></p>
+             <div id="comparison-output"></div>
+        </section>
+
+    </main>
+
+    <footer>
+        <hr>
+        <div class="footer-columns">
+            <p>Data source: Indian Election Dataset (Processed)</p>
+            <p>App Version 3.0 - Fixed Model</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
